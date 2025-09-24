@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-
 from sqlalchemy.orm import Session
-from database import SessionLocal
+
+from database import get_db
 
 from models.user import UserCreate, UserResponse, User
 from passlib.context import CryptContext
@@ -9,12 +9,6 @@ from passlib.context import CryptContext
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def hash_password(password: str):
     return pwd_context.hash(password)

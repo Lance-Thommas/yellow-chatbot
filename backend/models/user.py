@@ -1,4 +1,4 @@
-from typing import Union # Optional (reminder to self)
+from typing import Union # same asOptional (reminder to self)
 
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, Integer, String
