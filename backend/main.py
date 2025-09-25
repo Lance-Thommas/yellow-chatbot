@@ -1,9 +1,11 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 
-from routes import users, login, projects
+from routes import users, login, projects, prompts
 from database import engine, Base
 
+from logger import init_sentry
+init_sentry()
 
 app = FastAPI()
 
@@ -22,6 +24,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(login.router)
 app.include_router(projects.router)
+app.include_router(prompts.router)
 
 
 Base.metadata.create_all(bind=engine)

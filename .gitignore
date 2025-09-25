@@ -12,3 +12,5 @@ __pycache__/
 
 # IDE configs
 .vscode/
+
+project_dump.txt

@@ -3,15 +3,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.project import ProjectCreate, ProjectResponse, Project
 from models.user import User
-from auth.auth import auth_required
-from typing import Optional
+from auth.auth import get_current_user
+import sentry_sdk
 
 router = APIRouter()
 
 @router.post("/projects/", response_model=ProjectResponse)
-@auth_required
-# TODO: Resolve the type: ignore properly later
-def create_project(project: ProjectCreate, request: Request = None, db: Session = Depends(get_db), user_email: Optional[str] = None): # type: ignore
+def create_project(project: ProjectCreate, db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
     owner = db.query(User).filter(User.email == user_email).first()
     if not owner:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner not found")
@@ -35,12 +33,7 @@ def create_project(project: ProjectCreate, request: Request = None, db: Session 
     # TODO: Add logger later, send e to Rollbar/Sentry
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating project: {e}")
+        sentry_sdk.capture_exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create project")
     
-    return ProjectResponse(
-        project_id=new_project.id,
-        name=new_project.name,
-        description=new_project.description,
-        owner_id=new_project.owner_id,
-        is_active=new_project.is_active
-    )
+    return new_project

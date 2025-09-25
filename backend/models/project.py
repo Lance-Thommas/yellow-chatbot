@@ -21,8 +21,11 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
 
 class ProjectResponse(BaseModel):
-    project_id: uuid.UUID
+    id: uuid.UUID
     name: str
     description: Optional[str] = None
     owner_id: uuid.UUID
     is_active: int
+    
+    class Config:
+        from_attributes = True

@@ -29,6 +29,9 @@ class UserUpdate(BaseModel):
     age: Optional[int] = None
     
 class UserResponse(BaseModel):
-    user_id: uuid.UUID
+    id: uuid.UUID
     email: EmailStr  # TODO: Add proper error handling for email validation later
     age: Optional[int] = None
+    
+    class Config:
+        from_attributes = True

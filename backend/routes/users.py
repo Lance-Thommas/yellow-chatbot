@@ -21,15 +21,15 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     # save user to database with hashed password
     hashed_password = hash_password(user.password)
-    new_user = User(email=user.email, hashed_password=hashed_password, age=user.age)
+    new_user = User(
+        email=user.email, 
+        hashed_password=hashed_password,
+        age=user.age
+        )
     
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
     # TODO: Recheck this later, mapped manually for now
-    return {
-        "user_id": new_user.id,
-        "email": new_user.email,
-        "age": new_user.age
-    }
+    return new_user
