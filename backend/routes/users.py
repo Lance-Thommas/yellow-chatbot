@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -18,7 +18,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     # save user to database with hashed password
     hashed_password = hash_password(user.password)
     new_user = User(email=user.email, hashed_password=hashed_password, age=user.age)
@@ -27,11 +27,9 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    # Recheck this later, and remove comment once checked.
+    # TODO: Recheck this later, mapped manually for now
     return {
         "user_id": new_user.id,
         "email": new_user.email,
         "age": new_user.age
     }
-
-    # (Trapped) Error reading bcrypt version, missing __about__, check this too
