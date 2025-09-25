@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from database import get_db
 from models.project import ProjectCreate, ProjectResponse, Project
@@ -30,7 +30,6 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db), user_e
         db.commit() 
         db.refresh(new_project)
     
-    # TODO: Add logger later, send e to Rollbar/Sentry
     except Exception as e:
         db.rollback()
         sentry_sdk.capture_exception(e)
