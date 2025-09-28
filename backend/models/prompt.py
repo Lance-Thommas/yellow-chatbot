@@ -14,6 +14,7 @@ class Prompt(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, index=True)
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # TODO: Make LLM decide an appropriate description later
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     content: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -67,3 +68,14 @@ class PromptRunResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class SendPromptRequest(BaseModel):
+    prompt_id: uuid.UUID
+
+# TODO: Check if Text is better than str in this use-case
+class SendPromptResponse(BaseModel):
+    reply: str
+    run_id: uuid.UUID
+    status: str
+    created_at: datetime
+    updated_at: datetime

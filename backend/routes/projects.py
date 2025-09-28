@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Path
 from sqlalchemy.orm import Session
 from database import get_db
 from models.project import ProjectCreate, ProjectResponse, Project
@@ -36,3 +36,24 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db), user_e
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create project")
     
     return new_project
+
+@router.get("/projects/", response_model=list[ProjectResponse])
+def get_projects(db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    projects = db.query(Project).filter(Project.owner_id == user.id).all()
+    return projects
+
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
+def get_project(project_id: str = Path(..., description="ID of the project"), db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    project = db.query(Project).filter(Project.id == project_id, Project.owner_id == user.id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    return project

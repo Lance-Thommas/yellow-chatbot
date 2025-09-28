@@ -47,3 +47,7 @@ def login(login_request: LoginRequest, response: Response, db: Session = Depends
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     # TODO: Add more error handling later
 
+@router.post("/logout/")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out successfully"}

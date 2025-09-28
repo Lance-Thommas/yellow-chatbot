@@ -7,6 +7,8 @@ from models.user import UserCreate, UserResponse, User
 from passlib.context import CryptContext
 
 router = APIRouter()
+# TODO: Move to database.py later
+# TODO: change from bcrypt to keccak and hash salting
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -24,7 +26,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         email=user.email, 
         hashed_password=hashed_password,
-        age=user.age
         )
     
     db.add(new_user)

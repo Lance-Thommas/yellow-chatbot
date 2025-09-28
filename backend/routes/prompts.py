@@ -1,14 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, Body, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models.prompt import PromptCreate, PromptResponse, Prompt, PromptRun, PromptRunResponse
+from models.prompt import PromptCreate, PromptResponse, Prompt, PromptRun, PromptRunResponse, SendPromptRequest, SendPromptResponse
 from models.project import Project
 from auth.auth import get_current_user
 from models.user import User
 from models.file import ProjectFile
+from llm_client import generate_project_name
 from config import openai_client
 import uuid
 import sentry_sdk
+from fastapi.responses import StreamingResponse
+import json
 
 router = APIRouter()
 
@@ -209,7 +212,7 @@ def run_prompt(prompt_id: uuid.UUID, db: Session = Depends(get_db), user_email: 
     # Call OpenAI API to run the prompt
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",     
+            model="gpt-4-turbo",     
             messages=[{"role": "user", "content": full_prompt_content}],
         )
 
@@ -270,3 +273,323 @@ def project_analytics(project_id: uuid.UUID, db: Session = Depends(get_db), user
         "total_cost": total_cost,
         "runs": runs
     }
+
+@router.post("/projects/{project_id}/send_prompt", response_model=SendPromptResponse)
+def send_project_message(project_id: uuid.UUID, payload: SendPromptRequest = Body(...), db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    # Get prompt_id from request body
+    prompt_id = payload.prompt_id
+    if not prompt_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="prompt_id is required"
+        )
+
+    # Verify project exists
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    # Verify user access
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if project.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    # Fetch the prompt
+    prompt = db.query(Prompt).filter(Prompt.id == prompt_id, Prompt.project_id == project.id).first()
+    if not prompt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prompt not found")
+
+    # Create a PromptRun entry
+    run_entry = PromptRun(
+        id=uuid.uuid4(),
+        prompt_id=prompt.id,
+        project_id=project.id,
+        user_id=user.id,
+        status="pending",
+        output_data=None
+    )
+    db.add(run_entry)
+    db.commit()
+    db.refresh(run_entry)
+
+    # Attach project files if any
+    project_files = db.query(ProjectFile).filter(ProjectFile.project_id == project.id).all()
+    file_contents = ""
+    for f in project_files:
+        if f.file_id:
+            try:
+                content = openai_client.files.content(f.file_id)
+                if isinstance(content, bytes):
+                    content = content.decode("utf-8")
+                elif not isinstance(content, str):
+                    content = str(content)
+                file_contents += content + "\n"
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                continue
+
+    # Combine prompt content with project files
+    full_prompt = prompt.content + ("\n" + file_contents if file_contents else "")
+
+    # Call OpenAI API
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": full_prompt}]
+        )
+        reply = response.choices[0].message.content
+        if reply is None:
+            reply = ""
+        run_entry.output_data = reply
+        run_entry.status = "completed"
+        db.commit()
+        db.refresh(run_entry)
+    except Exception as e:
+        run_entry.status = "failed"
+        db.commit()
+        db.refresh(run_entry)
+        sentry_sdk.capture_exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to run prompt via OpenAI API"
+        )
+
+    return SendPromptResponse(
+        reply=reply,
+        run_id=run_entry.id,
+        status=run_entry.status,
+        created_at=run_entry.created_at,
+        updated_at=run_entry.updated_at
+    )
+    
+@router.post("/projects/{project_id}/messages", response_model=SendPromptResponse)
+def send_message(project_id: uuid.UUID, payload: dict = Body(...), db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    if project.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    content = payload.get("content")
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content is required")
+
+    # Create a new prompt for this message
+    prompt = Prompt(
+        id=uuid.uuid4(),
+        project_id=project.id,
+        name="Chat message",
+        content=content
+    )
+    db.add(prompt)
+    db.commit()
+    db.refresh(prompt)
+
+    # Create a run entry
+    run_entry = PromptRun(
+        id=uuid.uuid4(),
+        prompt_id=prompt.id,
+        project_id=project.id,
+        user_id=user.id,
+        status="pending",
+        input_data=content
+    )
+    db.add(run_entry)
+    db.commit()
+    db.refresh(run_entry)
+
+    # Fetch project files if needed
+    file_contents = ""
+    project_files = db.query(ProjectFile).filter(ProjectFile.project_id == project.id).all()
+    for f in project_files:
+        if f.file_id:
+            try:
+                fc = openai_client.files.content(f.file_id)
+                if isinstance(fc, bytes):
+                    fc = fc.decode("utf-8")
+                elif not isinstance(fc, str):
+                    fc = str(fc)
+                file_contents += fc + "\n"
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                continue
+
+    # Combine user message with project files
+    full_prompt = content + ("\n" + file_contents if file_contents else "")
+
+    # Call OpenAI API
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": full_prompt}]
+        )
+        reply = response.choices[0].message.content or ""
+        run_entry.output_data = reply
+        run_entry.status = "completed"
+        db.commit()
+        db.refresh(run_entry)
+    except Exception as e:
+        run_entry.status = "failed"
+        db.commit()
+        db.refresh(run_entry)
+        sentry_sdk.capture_exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate response")
+
+    return SendPromptResponse(
+        reply=reply,
+        run_id=run_entry.id,
+        status=run_entry.status,
+        created_at=run_entry.created_at,
+        updated_at=run_entry.updated_at
+    )
+    
+@router.get("/projects/{project_id}/messages")
+def get_project_messages(project_id: uuid.UUID, db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    if project.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    runs = db.query(PromptRun).filter(PromptRun.project_id == project.id).all()
+    messages = []
+    for run in runs:
+        if run.input_data:
+            messages.append({
+                "id": run.id,
+                "role": "user",
+                "content": run.input_data
+            })
+        if run.output_data:
+            messages.append({
+                "id": run.id,
+                "role": "assistant",
+                "content": run.output_data
+            })
+    return messages
+
+@router.post("/projects/{project_id}/generate_name")
+def generate_name(project_id: uuid.UUID, payload: dict, db: Session = Depends(get_db)):
+    # Find project
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    messages = payload.get("messages", [])
+    if not messages:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No messages provided")
+
+    # Call LLM helper
+    new_name = generate_project_name(messages)
+    project.name = new_name
+    db.commit()
+    db.refresh(project)
+
+    return {"id": str(project.id), "name": project.name}
+
+# TODO: SSE Streaming works but figure out how to display properly in the frontend
+@router.get("/projects/{project_id}/messages/stream")
+async def stream_message(project_id: uuid.UUID, content: str = Query(...), db: Session = Depends(get_db), user_email: str = Depends(get_current_user)):
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project or project.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    # Save prompt & run
+    prompt = Prompt(id=uuid.uuid4(), project_id=project.id, name="Chat message", content=content)
+    db.add(prompt)
+    db.commit()
+    db.refresh(prompt)
+
+    run_entry = PromptRun(
+        id=uuid.uuid4(),
+        prompt_id=prompt.id,
+        project_id=project.id,
+        user_id=user.id,
+        status="pending",
+        input_data=content
+    )
+    db.add(run_entry)
+    db.commit()
+    db.refresh(run_entry)
+
+    # Collect file contents
+    file_contents = ""
+    for f in db.query(ProjectFile).filter(ProjectFile.project_id == project.id).all():
+        if f.file_id:
+            try:
+                fc = openai_client.files.content(f.file_id)
+                if isinstance(fc, bytes):
+                    fc = fc.decode("utf-8")
+                file_contents += str(fc) + "\n"
+            except Exception:
+                continue
+
+    full_prompt = content + ("\n" + file_contents if file_contents else "")
+
+    async def event_generator():
+        assistant_content = ""
+        try:
+            # Keep your current pattern: call create(..., stream=True) and iterate
+            completion = openai_client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[{"role": "user", "content": full_prompt}],
+                stream=True
+            )
+
+            for chunk in completion:
+                try:
+                    choice = chunk.choices[0]
+                except Exception:
+                    continue
+
+                # robustly extract delta
+                delta = None
+                if isinstance(choice, dict):
+                    delta = choice.get("delta")
+                else:
+                    delta = getattr(choice, "delta", None)
+
+                # robustly extract content piece
+                content_piece = None
+                if isinstance(delta, dict):
+                    content_piece = delta.get("content")
+                else:
+                    content_piece = getattr(delta, "content", None)
+
+                if content_piece:
+                    assistant_content += content_piece
+                    # send only the new delta to the client
+                    payload = {"role": "assistant", "delta": content_piece}
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+            # stream finished - persist final output and signal client
+            run_entry.output_data = assistant_content
+            run_entry.status = "completed"
+            db.commit()
+
+            # send a custom end event so frontend can close the EventSource & run post-stream logic
+            yield "event: end\ndata: {}\n\n"
+
+        except Exception as e:
+            # mark failed and return an error delta + end event
+            run_entry.status = "failed"
+            db.commit()
+            sentry_sdk.capture_exception(e)
+            yield f"data: {json.dumps({'role':'assistant','delta':'[Error generating response]'})}\n\n"
+            yield "event: end\ndata: {}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
