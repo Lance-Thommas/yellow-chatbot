@@ -4,11 +4,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from models.user import User
-
 from database import get_db, pwd_context
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, MAX_BCRYPT_LEN
 from models.login import LoginRequest
-
 
 router = APIRouter()
 
@@ -35,15 +33,31 @@ def login(login_request: LoginRequest, response: Response, db: Session = Depends
     if user and verify_password(login_request.password, user.hashed_password):
         print("Received password:", repr(login_request.password)) # Backend debugging
         access_token = create_access_token(data={"sub": user.email})
+        
+        # Standard cookie
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="none",  # TODO: Adjust based on requirements
-            secure=True    # TODO: Set to True in production with HTTPS  
+            samesite="none",
+            secure=True,
+            path="/"
         )
+
+        # Partitioned cookie
+        cookie = (
+            f"access_token={access_token}; "
+            f"HttpOnly; "
+            f"Secure; "
+            f"SameSite=None; "
+            f"Path=/; "
+            f"Partitioned"
+        )
+        response.headers.append("Set-Cookie", cookie)
+
         return {"message": "Login successful"}
+    
     # TODO: Handle invalid logins better later
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     # TODO: Add more error handling later
