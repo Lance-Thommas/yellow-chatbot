@@ -14,7 +14,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str):
-    return pwd_context.hash(password[:MAX_BCRYPT_LEN])
+    password_bytes = password.encode("utf-8")
+    truncated_bytes = password_bytes[:MAX_BCRYPT_LEN]
+    return pwd_context.hash(truncated_bytes)
 
 @router.post("/users/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
