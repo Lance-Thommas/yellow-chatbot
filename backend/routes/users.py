@@ -5,6 +5,7 @@ from database import get_db
 
 from models.user import UserCreate, UserResponse, User
 from passlib.context import CryptContext
+from config import MAX_BCRYPT_LEN
 
 router = APIRouter()
 # TODO: Move to database.py later
@@ -13,7 +14,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str):
-    return pwd_context.hash(password)
+    return pwd_context.hash(password[:MAX_BCRYPT_LEN])
 
 @router.post("/users/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
