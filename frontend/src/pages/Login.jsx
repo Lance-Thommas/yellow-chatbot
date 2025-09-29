@@ -1,4 +1,5 @@
 import { useState } from "react";
+import api from "./client";
 
 export default function Auth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // toggle login/register
@@ -12,36 +13,14 @@ export default function Auth({ onLogin }) {
 
     try {
       if (!isLogin) {
-        // Register first
-        const registerRes = await fetch("/api/users/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-          credentials: "include",
-        });
-
-        if (!registerRes.ok) {
-          const data = await registerRes.json();
-          throw new Error(data.detail || "Registration failed");
-        }
+        const registerRes = await api.post("/users/", { email, password });
       }
 
-      // Login
-      const loginRes = await fetch("/api/login/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
-      if (!loginRes.ok) {
-        const data = await loginRes.json();
-        throw new Error(data.detail || "Login failed");
-      }
+      const loginRes = await api.post("/login/", { email, password });
 
       onLogin("cookie"); // notify App.jsx
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.detail || err.message);
     }
   };
 

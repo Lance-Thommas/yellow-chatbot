@@ -1,6 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "./client";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -15,20 +15,10 @@ const Register = () => {
     setError("");
 
     try {
-      await axios.post("http://localhost:8000/users/", {
-        email,
-        password,
-      });
-
-      await axios.post(
-        "http://localhost:8000/login/",
-        { email, password },
-        { withCredentials: true } // important for cookies
-      );
-
+      await api.post("/users/", { email, password });
+      await api.post("/login/", { email, password });
       navigate("/projectdetails");
     } catch (err) {
-      console.error(err);
       setError(err.response?.data?.detail || "Failed to register. Try again.");
     } finally {
       setLoading(false);

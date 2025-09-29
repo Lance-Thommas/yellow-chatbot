@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import api from "./client";
 
 export default function ProjectDetail({ onLogout }) {
   const { projectId: paramProjectId } = useParams();
@@ -25,7 +26,6 @@ export default function ProjectDetail({ onLogout }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages, isTyping]);
 
-  // Clean up EventSource on unmount
   useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
@@ -36,14 +36,11 @@ export default function ProjectDetail({ onLogout }) {
     };
   }, []);
 
-  // Fetch all projects
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await fetch("/api/projects/", { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to fetch projects");
-        const data = await res.json();
-        setProjects(data);
+        const data = await api.get("/projects/");
+        setProjects(data.data || data);
       } catch (err) {
         console.error(err);
         setError("Failed to load projects");
@@ -52,17 +49,12 @@ export default function ProjectDetail({ onLogout }) {
     fetchProjects();
   }, []);
 
-  // Fetch project details
   useEffect(() => {
     if (!projectId) return;
     const fetchProject = async () => {
       try {
-        const res = await fetch(`/api/projects/${projectId}`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Project not found");
-        const data = await res.json();
-        setProject(data);
+        const data = await api.get(`/projects/${projectId}`);
+        setProject(data.data || data);
       } catch (err) {
         setError(err.message);
       }
@@ -70,17 +62,12 @@ export default function ProjectDetail({ onLogout }) {
     fetchProject();
   }, [projectId]);
 
-  // Fetch messages
   useEffect(() => {
     if (!projectId) return;
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`/api/projects/${projectId}/messages`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to fetch messages");
-        const data = await res.json();
-        setMessages(data);
+        const data = await api.get(`/projects/${projectId}/messages`);
+        setMessages(data.data || data);
       } catch (err) {
         console.error(err);
         setMessages([]);
@@ -89,32 +76,24 @@ export default function ProjectDetail({ onLogout }) {
     fetchMessages();
   }, [projectId]);
 
-  // Helper: create new project
   const createNewProject = async () => {
     if (creating) return;
     setCreating(true);
 
     try {
       const tempName = `New Conversation ${Date.now()}`;
-      const res = await fetch("/api/projects/", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: tempName,
-          description: "Auto-created conversation",
-        }),
+      const newProject = await api.post("/projects/", {
+        name: tempName,
+        description: "Auto-created conversation",
       });
+      const projectData = newProject.data || newProject;
 
-      if (!res.ok) throw new Error("Failed to create project");
-      const newProject = await res.json();
+      setProject(projectData);
+      setProjects((prev) => [...prev, projectData]);
+      setProjectId(projectData.id);
+      navigate(`/projects/${projectData.id}`, { replace: true });
 
-      setProject(newProject);
-      setProjects((prev) => [...prev, newProject]);
-      setProjectId(newProject.id);
-      navigate(`/projects/${newProject.id}`, { replace: true });
-
-      return newProject.id;
+      return projectData.id;
     } catch (err) {
       console.error(err);
       return null;
@@ -126,7 +105,6 @@ export default function ProjectDetail({ onLogout }) {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // Close previous event source if any
     if (eventSourceRef.current) {
       try {
         eventSourceRef.current.close();
@@ -162,14 +140,15 @@ export default function ProjectDetail({ onLogout }) {
     ]);
 
     const evtSource = new EventSource(
-      `/api/projects/${currentProjectId}/messages/stream?content=${encodeURIComponent(
+      `${
+        api.defaults.baseURL
+      }/projects/${currentProjectId}/messages/stream?content=${encodeURIComponent(
         userMessage.content
       )}`
     );
 
     eventSourceRef.current = evtSource;
 
-    // Append deltas in real time
     evtSource.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
@@ -221,34 +200,24 @@ export default function ProjectDetail({ onLogout }) {
       eventSourceRef.current = null;
 
       if (isFirstMessage) {
-        // generate project name
         const assistantContent =
           messages.find((m) => m.id === assistantMessageId)?.content || "";
 
         try {
-          const nameRes = await fetch(
-            `/api/projects/${currentProjectId}/generate_name`,
+          const updated = await api.post(
+            `/projects/${currentProjectId}/generate_name`,
             {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                messages: [
-                  { role: "user", content: userMessage.content },
-                  { role: "assistant", content: assistantContent },
-                ],
-              }),
+              messages: [
+                { role: "user", content: userMessage.content },
+                { role: "assistant", content: assistantContent },
+              ],
             }
           );
-          if (nameRes.ok) {
-            const updated = await nameRes.json();
-            setProject((prev) => ({ ...prev, name: updated.name }));
-            setProjects((prev) =>
-              prev.map((p) =>
-                p.id === updated.id ? { ...p, name: updated.name } : p
-              )
-            );
-          }
+          const data = updated.data || updated;
+          setProject((prev) => ({ ...prev, name: data.name }));
+          setProjects((prev) =>
+            prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p))
+          );
         } catch (err) {
           console.error("Failed to generate project name:", err);
         }
@@ -258,9 +227,7 @@ export default function ProjectDetail({ onLogout }) {
 
   const handleLogoutClick = () => {
     navigate("/login", { replace: true });
-    fetch("/api/logout/", { method: "POST", credentials: "include" }).catch(
-      (err) => console.error("Logout failed", err)
-    );
+    api.post("/logout/").catch((err) => console.error("Logout failed", err));
   };
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
@@ -295,7 +262,6 @@ export default function ProjectDetail({ onLogout }) {
           boxShadow: "0 8px 24px rgba(146, 146, 146, 0.30)",
         }}
       >
-        {/* Sidebar */}
         <div
           style={{
             width: "250px",
@@ -339,7 +305,6 @@ export default function ProjectDetail({ onLogout }) {
           </button>
         </div>
 
-        {/* Chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <h2>{project ? project.name : "New Conversation"}</h2>
           <div

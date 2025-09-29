@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "./client";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -8,15 +9,10 @@ export default function Projects() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await fetch("/api/projects/", { credentials: "include" });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.detail || "Failed to fetch projects");
-        }
-        const data = await res.json();
-        setProjects(data);
+        const data = await api.get("/projects/");
+        setProjects(data.data || data);
       } catch (err) {
-        setError(err.message);
+        setError(err.response?.data?.detail || err.message);
       }
     };
     fetchProjects();
