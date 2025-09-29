@@ -33,6 +33,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 def login(login_request: LoginRequest, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_request.email).first()
     if user and verify_password(login_request.password, user.hashed_password):
+        print("Received password:", repr(login_request.password)) # Backend debugging
         access_token = create_access_token(data={"sub": user.email})
         response.set_cookie(
             key="access_token",
