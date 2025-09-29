@@ -40,8 +40,8 @@ def login(login_request: LoginRequest, response: Response, db: Session = Depends
             value=access_token,
             httponly=True,
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax",  # TODO: Adjust based on requirements
-            secure=False    # TODO: Set to True in production with HTTPS  
+            samesite="none",  # TODO: Adjust based on requirements
+            secure=True    # TODO: Set to True in production with HTTPS  
         )
         return {"message": "Login successful"}
     # TODO: Handle invalid logins better later
