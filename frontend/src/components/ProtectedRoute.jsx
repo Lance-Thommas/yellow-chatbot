@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import api from "./api/client";
 
 export default function ProtectedRoute({ children }) {
   const [loading, setLoading] = useState(true);
@@ -8,27 +9,18 @@ export default function ProtectedRoute({ children }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/check_session/", {
-          credentials: "include",
-        });
-        if (res.ok) {
-          setAuthenticated(true);
-        } else {
-          setAuthenticated(false);
-        }
-      } catch (err) {
+        const res = await api.get("/check_session/", { withCredentials: true });
+        setAuthenticated(res.ok);
+      } catch {
         setAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
-
     checkAuth();
   }, []);
 
   if (loading) return <p>Checking authentication...</p>;
-
   if (!authenticated) return <Navigate to="/login" replace />;
-
   return children;
 }

@@ -1,45 +1,36 @@
-import { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
-  Link,
 } from "react-router-dom";
 import Login from "./pages/Login";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import ProtectedRoute from "./ProtectedRoute";
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
-
-  const handleLogin = () => setLoggedIn(true);
-
   return (
     <Router>
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route
-          path="/login"
+          path="/projects"
           element={
-            !loggedIn ? (
-              <Login onLogin={handleLogin} />
-            ) : (
-              <Navigate to="/projects/new" />
-            )
+            <ProtectedRoute>
+              <Projects />
+            </ProtectedRoute>
           }
         />
         <Route
-          path="/projects"
-          element={loggedIn ? <Projects /> : <Navigate to="/login" />}
-        />
-        <Route
           path="/projects/:projectId"
-          element={loggedIn ? <ProjectDetail /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <ProjectDetail />
+            </ProtectedRoute>
+          }
         />
-        <Route
-          path="*"
-          element={<Navigate to={loggedIn ? "/projects" : "/login"} />}
-        />
+        <Route path="*" element={<Navigate to="/projects" replace />} />
       </Routes>
     </Router>
   );
