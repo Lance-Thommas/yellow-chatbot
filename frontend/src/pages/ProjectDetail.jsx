@@ -144,7 +144,8 @@ export default function ProjectDetail({ onLogout }) {
         api.defaults.baseURL
       }/projects/${currentProjectId}/messages/stream?content=${encodeURIComponent(
         userMessage.content
-      )}`
+      )}`,
+      { withCredentials: true }
     );
 
     eventSourceRef.current = evtSource;
