@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from models.user import User
 
 from database import get_db, pwd_context
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, MAX_BCRYPT_LEN
 from models.login import LoginRequest
 
 
@@ -14,7 +14,7 @@ router = APIRouter()
 
 # TODO: Transfer to services later and map columns properly
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(plain_password[:MAX_BCRYPT_LEN], hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
