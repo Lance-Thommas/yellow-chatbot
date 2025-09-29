@@ -1,31 +1,36 @@
 import { useState } from "react";
 import api from "../api/client.js";
 
-export default function Auth({ onLogin }) {
+export default function Login({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // toggle login/register
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       if (!isLogin) {
-        const registerRes = await api.post("/users/", { email, password });
+        await api.post("/users/", { email, password });
       }
 
-      const loginRes = await api.post("/login/", { email, password });
+      await api.post("/login/", { email, password });
 
-      onLogin("cookie"); // notify App.jsx
+      // Navigate after login/register
+      onLogin();
     } catch (err) {
       setError(err.response?.data?.detail || err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "auto" }}>
+    <div style={{ maxWidth: "400px", margin: "auto", marginTop: "100px" }}>
       <div
         style={{
           display: "flex",
@@ -71,7 +76,16 @@ export default function Auth({ onLogin }) {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button type="submit">{isLogin ? "Login" : "Register & Login"}</button>
+
+        <button type="submit" disabled={loading}>
+          {loading
+            ? isLogin
+              ? "Logging in..."
+              : "Registering..."
+            : isLogin
+            ? "Login"
+            : "Register & Login"}
+        </button>
       </form>
     </div>
   );
