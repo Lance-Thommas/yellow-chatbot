@@ -31,4 +31,8 @@ app.include_router(files.router, prefix="/api")
 
 Base.metadata.create_all(bind=engine)
 
+@app.get("/api/health")
+def health():
+    return {"status":"ok"}
+
 # TODO: check bcrypt.__about__ error later
