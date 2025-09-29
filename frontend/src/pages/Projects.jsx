@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "./client";
+import api from "../api/client.js";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);

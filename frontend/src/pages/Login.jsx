@@ -1,5 +1,5 @@
 import { useState } from "react";
-import api from "./client";
+import api from "../api/client.js";
 
 export default function Auth({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // toggle login/register

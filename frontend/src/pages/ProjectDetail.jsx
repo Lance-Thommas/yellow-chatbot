@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import api from "./client";
+import api from "../api/client.js";
 
 export default function ProjectDetail({ onLogout }) {
   const { projectId: paramProjectId } = useParams();
