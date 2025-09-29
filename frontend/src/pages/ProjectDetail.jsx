@@ -226,9 +226,30 @@ export default function ProjectDetail({ onLogout }) {
     });
   };
 
-  const handleLogoutClick = () => {
+  const handleLogoutClick = async () => {
+    // Stop SSE if active
+    if (eventSourceRef.current) {
+      try {
+        eventSourceRef.current.close();
+      } catch {}
+      eventSourceRef.current = null;
+    }
+
+    // Reset UI state immediately so component stops trying to fetch
+    setProjects([]);
+    setProject(null);
+    setMessages([]);
+    setInput("");
+    setError("");
+
+    try {
+      await api.post("/logout/");
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+
+    // Now navigate after cleanup
     navigate("/login", { replace: true });
-    api.post("/logout/").catch((err) => console.error("Logout failed", err));
   };
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
