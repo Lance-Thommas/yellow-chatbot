@@ -18,6 +18,6 @@ def get_db():
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set.")
-engine = create_engine(DATABASE_URL, connect_args={"sslmode": "verify-full"}, poolclass=NullPool)
+engine = create_engine(DATABASE_URL, connect_args={"sslmode": "prefer"}, poolclass=NullPool)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
