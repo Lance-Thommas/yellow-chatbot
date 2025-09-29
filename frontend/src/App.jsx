@@ -19,16 +19,19 @@ export default function AppRouter() {
   return (
     <Router>
       <Routes>
+        {/* Login page */}
         <Route
           path="/login"
           element={
             loggedIn ? (
-              <Navigate to="/projects" replace />
+              <Navigate to="/projects/new" replace />
             ) : (
               <Login onLogin={handleLogin} />
             )
           }
         />
+
+        {/* Projects list */}
         <Route
           path="/projects"
           element={
@@ -37,6 +40,8 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
+
+        {/* Project detail (new or existing) */}
         <Route
           path="/projects/:projectId"
           element={
@@ -45,9 +50,13 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         />
+
+        {/* Catch-all: redirect to login if not logged in, otherwise open new project */}
         <Route
           path="*"
-          element={<Navigate to={loggedIn ? "/projects" : "/login"} replace />}
+          element={
+            <Navigate to={loggedIn ? "/projects/new" : "/login"} replace />
+          }
         />
       </Routes>
     </Router>
