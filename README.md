@@ -46,9 +46,9 @@ python -m venv .venv
 source .venv/bin/activate # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# create a .env or set env vars:
+### create a .env or set env vars:
 
-# DATABASE_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OPENAI_API_KEY
+#### DATABASE_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OPENAI_API_KEY
 
 export DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
 export SECRET_KEY="replace_with_secure_random"
