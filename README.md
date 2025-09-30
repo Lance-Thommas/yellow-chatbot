@@ -35,54 +35,52 @@ A conversational AI platform (chatbot) built with **FastAPI**, **PostgreSQL**, a
 
 ### Steps
 
-# 1) Clone
+## 1) Clone
 
+````bash
 git clone https://github.com/Lance-Thommas/yellow-chatbot.git
 cd yellow-chatbot
 
-# 2) Backend
-
+## 2) Backend
+```bash
 cd backend
 python -m venv .venv
 
-# Activate virtual environment
-
+### Activate virtual environment
+```bash
 source .venv/bin/activate # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Set environment variables
-
+### Set environment variables
+```bash
 export DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
 export SECRET_KEY="replace_with_secure_random"
 export OPENAI_API_KEY="sk-..."
 
-# Run backend
-
+### Run backend
+```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# 3) Frontend
-
+## 3) Frontend
+```bash
 cd ../frontend
 npm install
-
-# Update frontend/api/client.js baseURL to match backend (e.g. http://localhost:8000/api)
-
 npm run dev
+### Update frontend/api/client.js baseURL to match backend (e.g. http://localhost:8000/api)
 
-# Minimal API overview
+### Minimal API overview
 
-# POST /api/users/ — register user
+### POST /api/login/ — login (sets access_token cookie)
 
-# POST /api/login/ — login (sets access_token cookie)
+### POST /api/logout/ — logout (clears cookie)
 
-# POST /api/logout/ — logout (clears cookie)
+### GET /api/check_session/ — quick session check
 
-# GET /api/check_session/ — quick session check
+### GET /api/projects/ — list conversations
 
-# GET /api/projects/ — list conversations
+### POST /api/projects/ — create conversation
 
-# POST /api/projects/ — create conversation
+### GET /api/projects/{id}/messages/ — fetch messages
 
-# GET /api/projects/{id}/messages/ — fetch messages
-
-# GET /api/projects/{id}/messages/stream?content=... — SSE streaming of LLM response
+### GET /api/projects/{id}/messages/stream?content=... — SSE streaming of LLM response
+````
