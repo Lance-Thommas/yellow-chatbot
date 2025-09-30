@@ -68,7 +68,7 @@ export OPENAI_API_KEY="sk-..."`
 npm install
 npm run dev`
 
-### Minimal API overview
+## 4) Minimal API overview
 
 ### POST /api/login/ — login (sets access_token cookie)
 
