@@ -1,6 +1,6 @@
 A conversational AI platform (chatbot) built with **FastAPI**, **PostgreSQL**, and **React**. Focused on backend engineering and LLM integration: persistent conversations, streaming AI responses, and secure session handling.
 
-**Live demo:** https://yellow-chatbot.vercel.app/
+**Live demo:** https://yellow-chatbot.vercel.app/  
 **Source:** https://github.com/Lance-Thommas/yellow-chatbot
 
 ---
@@ -33,51 +33,56 @@ A conversational AI platform (chatbot) built with **FastAPI**, **PostgreSQL**, a
 - Python (>=3.10)
 - PostgreSQL or a hosted Postgres (Neon, Supabase, etc.)
 
-### 1) Clone
+### Steps
 
-bash
+# 1) Clone
+
 git clone https://github.com/Lance-Thommas/yellow-chatbot.git
-cd your-repo
+cd yellow-chatbot
 
-### 2) Backend
+# 2) Backend
 
 cd backend
 python -m venv .venv
+
+# Activate virtual environment
+
 source .venv/bin/activate # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-### create a .env or set env vars:
-
-#### DATABASE_URL, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OPENAI_API_KEY
+# Set environment variables
 
 export DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
 export SECRET_KEY="replace_with_secure_random"
 export OPENAI_API_KEY="sk-..."
+
+# Run backend
+
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-### 3) Frontend
+# 3) Frontend
 
-cd frontend
+cd ../frontend
 npm install
 
-# update frontend/api/client.js baseURL to match backend (e.g. http://localhost:8000/api)
+# Update frontend/api/client.js baseURL to match backend (e.g. http://localhost:8000/api)
 
 npm run dev
 
-Minimal API overview
+# Minimal API overview
 
-POST /api/users/ — register user
+# POST /api/users/ — register user
 
-POST /api/login/ — login (sets access_token cookie)
+# POST /api/login/ — login (sets access_token cookie)
 
-POST /api/logout/ — logout (clears cookie)
+# POST /api/logout/ — logout (clears cookie)
 
-GET /api/check_session/ — quick session check
+# GET /api/check_session/ — quick session check
 
-GET /api/projects/ — list conversations
+# GET /api/projects/ — list conversations
 
-POST /api/projects/ — create conversation
+# POST /api/projects/ — create conversation
 
-GET /api/projects/{id}/messages/ — fetch messages
+# GET /api/projects/{id}/messages/ — fetch messages
 
-GET /api/projects/{id}/messages/stream?content=... — SSE streaming of LLM response
+# GET /api/projects/{id}/messages/stream?content=... — SSE streaming of LLM response
