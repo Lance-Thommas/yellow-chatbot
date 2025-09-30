@@ -37,49 +37,36 @@ A conversational AI platform (chatbot) built with **FastAPI**, **PostgreSQL**, a
 
 ## 1) Clone
 
-`` `bash
-git clone https://github.com/Lance-Thommas/yellow-chatbot.git
-cd yellow-chatbot
-` ``
+`git clone https://github.com/Lance-Thommas/yellow-chatbot.git
+cd yellow-chatbot`
 
 ## 2) Backend
 
-`` `bash
-cd backend
-python -m venv .venv
-` ``
+`cd backend
+python -m venv .venv`
 
 ### Activate virtual environment
 
-`` `bash
-source .venv/bin/activate # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-` ``
+`source .venv/bin/activate # Windows: .venv\Scripts\activate
+pip install -r requirements.txt`
 
 ### Set environment variables
 
-`` `bash
-export DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
+`export DATABASE_URL="postgresql://user:pass@host:5432/dbname?sslmode=require"
 export SECRET_KEY="replace_with_secure_random"
-export OPENAI_API_KEY="sk-..."
-` ``
+export OPENAI_API_KEY="sk-..."`
 
 ### Run backend
 
-`` `bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-` ``
+`uvicorn main:app --reload --host 0.0.0.0 --port 8000`
 
 ## 3) Frontend
 
-`` `bash
-cd ../frontend
-npm install
-npm run dev
-
 #### Update frontend/api/client.js baseURL to match backend (e.g. http://localhost:8000/api)
 
-` ``
+`cd ../frontend
+npm install
+npm run dev`
 
 ### Minimal API overview
 
